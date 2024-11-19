@@ -1,0 +1,5 @@
+com\example\jobsearch\repository\JobRepository.class
+com\example\jobsearch\controller\JobController.class
+com\example\jobsearch\JobsearchApplication.class
+com\example\jobsearch\service\JobService.class
+com\example\jobsearch\model\Job.class

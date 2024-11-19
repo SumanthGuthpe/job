@@ -1,0 +1,283 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <meta http-equiv="X-UA-Compatible" content="IE=edge">
+    <title>Job Search System</title>
+    <style>
+        body {
+            font-family: Arial, sans-serif;
+            background-color: #f4f4f9;
+            margin: 0;
+            padding: 20px;
+        }
+
+        h1 {
+            color: #333;
+            text-align: center;
+        }
+
+        .container {
+            max-width: 1000px;
+            margin: 0 auto;
+        }
+
+        .form-group {
+            margin-bottom: 20px;
+        }
+
+        input[type="text"], textarea {
+            width: 100%;
+            padding: 12px;
+            margin-top: 5px;
+            margin-bottom: 15px;
+            border: 1px solid #ccc;
+            border-radius: 4px;
+            font-size: 16px;
+        }
+
+        button {
+            padding: 10px 20px;
+            background-color: #5c6bc0;
+            color: white;
+            border: none;
+            font-size: 16px;
+            cursor: pointer;
+            border-radius: 4px;
+        }
+
+        button:hover {
+            background-color: #3f51b5;
+        }
+
+        .job-list {
+            margin-top: 30px;
+        }
+
+        .job-item {
+            background-color: white;
+            padding: 20px;
+            margin-bottom: 15px;
+            border-radius: 8px;
+            box-shadow: 0 4px 8px rgba(0, 0, 0, 0.1);
+        }
+
+        .job-item h4 {
+            margin: 0;
+            font-size: 1.25em;
+        }
+
+        .job-item p {
+            margin: 8px 0;
+            font-size: 1em;
+        }
+
+        .apply-button {
+            padding: 8px 16px;
+            background-color: #388e3c;
+            color: white;
+            border: none;
+            font-size: 16px;
+            cursor: pointer;
+            border-radius: 4px;
+        }
+
+        .apply-button:hover {
+            background-color: #2c6b32;
+        }
+
+        .apply-button:disabled {
+            background-color: #bdbdbd;
+            cursor: not-allowed;
+        }
+
+        .error {
+            color: red;
+            font-size: 14px;
+        }
+
+        .alert {
+            background-color: #ffeb3b;
+            padding: 10px;
+            border-radius: 4px;
+            font-size: 16px;
+            margin-bottom: 20px;
+            text-align: center;
+            display: none;
+        }
+    </style>
+</head>
+<body>
+
+<div class="container">
+    <h1>Job Search System</h1>
+
+    <!-- Add Job Form -->
+    <div class="form-group">
+        <h3>Add a New Job</h3>
+        <input type="text" id="jobTitle" placeholder="Job Title" required>
+        <textarea id="jobDescription" placeholder="Job Description" rows="4" required></textarea>
+        <input type="text" id="companyName" placeholder="Company Name" required>
+        <input type="text" id="location" placeholder="Location" required>
+        <button onclick="addJob()">Add Job</button>
+        <p id="add-job-error" class="error"></p>
+    </div>
+
+    <!-- Search Job Form -->
+    <div class="form-group">
+        <h3>Search Jobs</h3>
+        <input type="text" id="searchKeyword" placeholder="Search by keyword (e.g., Developer)">
+        <button onclick="searchJobs()">Search</button>
+    </div>
+
+    <!-- Alert for operations -->
+    <div id="alert" class="alert"></div>
+
+    <!-- Available Jobs List -->
+    <div class="job-list">
+        <h3>Available Jobs</h3>
+        <div id="jobsContainer"></div>
+    </div>
+</div>
+
+<script>
+    const apiBaseUrl = "http://localhost:8080/api/jobs"; // Update if your Spring Boot app is on a different URL
+
+    // Display alert messages
+    function showAlert(message, type = 'success') {
+        const alert = document.getElementById('alert');
+        alert.textContent = message;
+        alert.style.backgroundColor = type === 'success' ? '#81c784' : '#ffeb3b';
+        alert.style.display = 'block';
+        setTimeout(() => alert.style.display = 'none', 3000);
+    }
+
+    // Function to add a new job
+    function addJob() {
+        const title = document.getElementById('jobTitle').value;
+        const description = document.getElementById('jobDescription').value;
+        const company = document.getElementById('companyName').value;
+        const location = document.getElementById('location').value;
+
+        if (!title || !description || !company || !location) {
+            document.getElementById('add-job-error').textContent = 'Please fill out all fields!';
+            return;
+        }
+
+        const jobData = {
+            title: title,
+            description: description,
+            companyName: company,
+            location: location,
+            isApplied: false
+        };
+
+        // Clear error message
+        document.getElementById('add-job-error').textContent = "";
+
+        // Call the API to add the job
+        fetch(apiBaseUrl, {
+            method: 'POST',
+            headers: {
+                'Content-Type': 'application/json'
+            },
+            body: JSON.stringify(jobData)
+        })
+        .then(response => {
+            if (response.ok) {
+                showAlert('Job added successfully!', 'success');
+                loadAvailableJobs(); // Reload available jobs after adding a new one
+            } else {
+                document.getElementById('add-job-error').textContent = 'Error adding job. Please try again.';
+            }
+        })
+        .catch(error => {
+            document.getElementById('add-job-error').textContent = `Error: ${error.message}`;
+        });
+    }
+
+    // Function to search jobs by keyword
+    function searchJobs() {
+        const keyword = document.getElementById('searchKeyword').value.trim();
+        
+        if (keyword === "") {
+            showAlert("Please enter a search keyword.", "warning");
+            return;
+        }
+
+        fetch(`${apiBaseUrl}/search?keyword=${keyword}`)
+            .then(response => response.json())
+            .then(jobs => {
+                displayJobs(jobs);
+            })
+            .catch(error => {
+                showAlert("Error fetching jobs. Please try again.", "error");
+                console.error('Error fetching jobs:', error);
+            });
+    }
+
+    // Function to get and display all available jobs
+    function loadAvailableJobs() {
+        fetch(`${apiBaseUrl}/available`)
+            .then(response => response.json())
+            .then(jobs => {
+                displayJobs(jobs);
+            })
+            .catch(error => {
+                showAlert("Error fetching available jobs. Please try again.", "error");
+                console.error('Error fetching available jobs:', error);
+            });
+    }
+
+    // Function to display jobs on the page
+    function displayJobs(jobs) {
+        const jobsContainer = document.getElementById('jobsContainer');
+        jobsContainer.innerHTML = ''; // Clear previous job list
+
+        if (jobs.length === 0) {
+            jobsContainer.innerHTML = '<p>No jobs found</p>';
+            return;
+        }
+
+        jobs.forEach(job => {
+            const jobElement = document.createElement('div');
+            jobElement.classList.add('job-item');
+            jobElement.innerHTML = `
+                <h4>${job.title}</h4>
+                <p><strong>Company:</strong> ${job.companyName}</p>
+                <p><strong>Location:</strong> ${job.location}</p>
+                <p><strong>Description:</strong> ${job.description}</p>
+                <button class="apply-button" onclick="applyForJob(${job.id})" ${job.isApplied ? 'disabled' : ''}>
+                    ${job.isApplied ? 'Applied' : 'Apply'}
+                </button>
+            `;
+            jobsContainer.appendChild(jobElement);
+        });
+    }
+
+    // Function to apply for a job
+    function applyForJob(jobId) {
+        fetch(`${apiBaseUrl}/${jobId}/apply`, {
+            method: 'POST'
+        })
+        .then(response => {
+            if (response.ok) {
+                showAlert('Applied for the job successfully!', 'success');
+                loadAvailableJobs(); // Reload available jobs after applying
+            } else {
+                showAlert('Failed to apply for the job.', 'error');
+            }
+        })
+        .catch(error => {
+            showAlert('Error applying for job. Please try again.', 'error');
+            console.error('Error applying for job:', error);
+        });
+    }
+
+    // Load available jobs when the page is loaded
+    window.onload = loadAvailableJobs;
+</script>
+
+</body>
+</html>
