@@ -9,3 +9,9 @@ ls
 rm -rf *
 ls
 exit
+ls
+git init
+git add .
+git status
+ls
+exit
